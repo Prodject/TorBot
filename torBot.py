@@ -14,6 +14,7 @@ from modules.link import LinkNode
 from modules.updater import updateTor
 from modules.savefile import saveJson
 from modules.info import execute_all
+from modules.collect_data import collect_data
 
 # GLOBAL CONSTS
 LOCALHOST = "127.0.0.1"
@@ -23,17 +24,18 @@ DEFPORT = 9050
 __VERSION = "1.3.3"
 
 
-def connect(address, port):
+def connect(address, port, no_socks):
     """ Establishes connection to port
 
     Assumes port is bound to localhost, if host that port is bound to changes
-    then change the port
+    then change the port.
 
     Args:
-        address: address for port to bound to
-        port: Establishes connect to this port
+        address (str): Address for port to bind to.
+        port (str): Establishes connect to this port.
     """
-
+    if no_socks:
+        return
     if address and port:
         socks.set_default_proxy(socks.PROXY_TYPE_SOCKS5, address, port)
     elif address:
@@ -47,7 +49,7 @@ def connect(address, port):
 
     def getaddrinfo(*args):
         """
-        Overloads socket function for std socket library
+        Overloads socket function for std socket library.
         Check socket.getaddrinfo() documentation to understand parameters.
         Simple description below:
         argument - explanation (actual value)
@@ -82,7 +84,7 @@ def header():
                     #  GitHub : https://github.com/DedsecInside/TorBot    #
                     #  Help : use -h for help text                        #
                     #######################################################
-                                  {license_msg} 
+                                  {license_msg}
               """
 
     title = title.format(license_msg=license_msg, banner=banner)
@@ -119,6 +121,13 @@ def get_args():
                         help="Visualizes tree of data gathered.")
     parser.add_argument("-d", "--download", action="store_true",
                         help="Downloads tree of data gathered.")
+    parser.add_argument("--gather",
+                        action="store_true",
+                        help="Gather data for analysis")
+    parser.add_argument("--no-socks",
+                        action="store_true",
+                        help="Don't use local SOCKS. Useful when TorBot is"
+                             " launched behind a Whonix Gateway")
     return parser.parse_args()
 
 
@@ -127,8 +136,11 @@ def main():
     TorBot's Core
     """
     args = get_args()
-    connect(args.ip, args.port)
+    connect(args.ip, args.port, args.no_socks)
 
+    if args.gather:
+        collect_data()
+        return
     # If flag is -v, --update, -q/--quiet then user only runs that operation
     # because these are single flags only
     if args.version:
@@ -160,7 +172,7 @@ def main():
         if args.visualize:
             if args.depth:
                 tree = LinkTree(node, stop_depth=args.depth)
-            else:    
+            else:
                 tree = LinkTree(node)
             tree.show()
         if args.download:
@@ -178,9 +190,7 @@ def main():
 
 
 if __name__ == '__main__':
-
     try:
         main()
-
     except KeyboardInterrupt:
         print("Interrupt received! Exiting cleanly...")
